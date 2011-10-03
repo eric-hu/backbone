@@ -1,4 +1,6 @@
 A fork of Backbone 0.5.3 with my personal notes for a line-by-line readthrough of the source code.
 
-For Docs, License, Tests, and pre-packed downloads, see:
-http://documentcloud.github.com/backbone/
+This fork isn't intended for any features or pull requests.
+
+If you came upon this page looking for the original project, please go here:
+https://github.com/documentcloud/backbone

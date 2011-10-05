@@ -71,8 +71,8 @@
     bind : function(ev, callback, context) {
       var calls = this._callbacks || (this._callbacks = {});
       var list  = calls[ev] || (calls[ev] = []);
-      list.push([callback, context]);
-      return this;
+      list.push([callback, context]);  //context refers to what 'this' will be when callback is called
+      return this;  // return current context (so methods can be chained?)
     },
 
     // Remove one or many callbacks. If `callback` is null, removes all
@@ -82,21 +82,21 @@
       var calls;
       if (!ev) {
         this._callbacks = {};
-      } else if (calls = this._callbacks) {
-        if (!callback) {
+      } else if (calls = this._callbacks) { //map callbacks into 'calls'.  Do nothing else if they're empty.
+        if (!callback) { //unbind all callbacks for specified event when callback is null
           calls[ev] = [];
         } else {
           var list = calls[ev];
           if (!list) return this;
           for (var i = 0, l = list.length; i < l; i++) {
             if (list[i] && callback === list[i][0]) {
-              list[i] = null;
-              break;
+              list[i] = null;  //null out entry in callback list, will be removed when trigger() is called
+              break;  //break from for loop.  Unbind deletes only the first callback match.
             }
           }
         }
       }
-      return this;
+      return this;  //return context, for chainability?
     },
 
     // Trigger an event, firing all bound callbacks. Callbacks are passed the
@@ -105,21 +105,21 @@
     trigger : function(eventName) {
       var list, calls, ev, callback, args;
       var both = 2;
-      if (!(calls = this._callbacks)) return this;
-      while (both--) {
+      if (!(calls = this._callbacks)) return this; // load callback list and return if it's empty
+      while (both--) { //run this loop twice. Trigger callbacks for eventName and then 'all'
         ev = both ? eventName : 'all';
         if (list = calls[ev]) {
           for (var i = 0, l = list.length; i < l; i++) {
-            if (!(callback = list[i])) {
-              list.splice(i, 1); i--; l--;
+            if (!(callback = list[i])) { //evals to true only when list[i] is false/null
+              list.splice(i, 1); i--; l--; //remove a nulled entry (unbind() nulls entries in callback list)
             } else {
               args = both ? Array.prototype.slice.call(arguments, 1) : arguments;
-              callback[0].apply(callback[1] || this, args);
+              callback[0].apply(callback[1] || this, args); // call callback function with appropriate args
             }
           }
         }
       }
-      return this;
+      return this;  //return current context, for chainability?
     }
 
   };
@@ -133,17 +133,17 @@
     var defaults;
     attributes || (attributes = {});
     if (defaults = this.defaults) {
-      if (_.isFunction(defaults)) defaults = defaults.call(this);
+      if (_.isFunction(defaults)) defaults = defaults.call(this); // defaults can be a JSON object or a function
       attributes = _.extend({}, defaults, attributes);
     }
-    this.attributes = {};
+    this.attributes = {}; // Backbone.Model().attributes = {}
     this._escapedAttributes = {};
     this.cid = _.uniqueId('c');
-    this.set(attributes, {silent : true});
+    this.set(attributes, {silent : true}); // set: Backbone.Model method (line 193).  silent: true disables validations
     this._changed = false;
     this._previousAttributes = _.clone(this.attributes);
     if (options && options.collection) this.collection = options.collection;
-    this.initialize(attributes, options);
+    this.initialize(attributes, options); // to be defined for each model
   };
 
   // Attach all inheritable methods to the Model prototype.
@@ -162,7 +162,7 @@
 
     // Initialize is an empty function by default. Override it with your own
     // initialization logic.
-    initialize : function(){},
+    initialize : function(){}, // initialize(attributes, options) called when a new instance is created
 
     // Return a copy of the model's `attributes` object.
     toJSON : function() {
@@ -177,9 +177,9 @@
     // Get the HTML-escaped value of an attribute.
     escape : function(attr) {
       var html;
-      if (html = this._escapedAttributes[attr]) return html;
+      if (html = this._escapedAttributes[attr]) return html; // if previously set, just fetch and return
       var val = this.attributes[attr];
-      return this._escapedAttributes[attr] = escapeHTML(val == null ? '' : '' + val);
+      return this._escapedAttributes[attr] = escapeHTML(val == null ? '' : '' + val); // coerce val to a string, escape html and assign to _escapedAttributes
     },
 
     // Returns `true` if the attribute contains a value that is not null

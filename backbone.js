@@ -90,7 +90,7 @@
           if (!list) return this;
           for (var i = 0, l = list.length; i < l; i++) {
             if (list[i] && callback === list[i][0]) {
-              list[i] = null;  //null out entry in callback list, will be removed when trigger() is called
+              list[i] = null;  //null out entry in callback list, will be removed when trigger() is called (why isn't it just removed here?)
               break;  //break from for loop.  Unbind deletes only the first callback match.
             }
           }
@@ -202,7 +202,7 @@
       if (!options.silent && this.validate && !this._performValidation(attrs, options)) return false;
 
       // Check for changes of `id`.
-      if (this.idAttribute in attrs) this.id = attrs[this.idAttribute];
+      if (this.idAttribute in attrs) this.id = attrs[this.idAttribute]; // make changes to id first: one change in many attributes could trigger change events with different ids(?)
 
       // We're about to start triggering change events.
       var alreadyChanging = this._changing;
@@ -211,11 +211,11 @@
       // Update attributes.
       for (var attr in attrs) {
         var val = attrs[attr];
-        if (!_.isEqual(now[attr], val)) {
+        if (!_.isEqual(now[attr], val)) { //underscore.js's isEqual is an optimized deep comparison (== is true only for references to same object)
           now[attr] = val;
-          delete escaped[attr];
+          delete escaped[attr]; //delete caching for escapedAttribute
           this._changed = true;
-          if (!options.silent) this.trigger('change:' + attr, this, val, options);
+          if (!options.silent) this.trigger('change:' + attr, this, val, options); //silent affects event triggering and validation
         }
       }
 
@@ -230,12 +230,12 @@
     unset : function(attr, options) {
       if (!(attr in this.attributes)) return this;
       options || (options = {});
-      var value = this.attributes[attr];
+      var value = this.attributes[attr]; // ?: value appears to be unused (?)
 
-      // Run validation.
+      // Run validation. // ?: why run validation when removing an attribute? --because one removed attribute could invalidate an instance of the model
       var validObj = {};
-      validObj[attr] = void 0;
-      if (!options.silent && this.validate && !this._performValidation(validObj, options)) return false;
+      validObj[attr] = void 0; //void 0 is equivalent to undefined
+      if (!options.silent && this.validate && !this._performValidation(validObj, options)) return false; // ?: why performValidation on validObj? seems like a hash with a single undefined attribute. Perhaps validObj should be a copy of value
 
       // Remove the attribute.
       delete this.attributes[attr];
@@ -256,15 +256,15 @@
       var attr;
       var old = this.attributes;
 
-      // Run validation.
+      // Run validation. // ?: why run validation when removing a model? --model isn't removed, its attributes are just being cleared.
       var validObj = {};
-      for (attr in old) validObj[attr] = void 0;
-      if (!options.silent && this.validate && !this._performValidation(validObj, options)) return false;
+      for (attr in old) validObj[attr] = void 0; //create a 'copy' of the object with all fields undefined
+      if (!options.silent && this.validate && !this._performValidation(validObj, options)) return false; //this.validate carries the validations, this gets passed to _performValidation
 
       this.attributes = {};
       this._escapedAttributes = {};
       this._changed = true;
-      if (!options.silent) {
+      if (!options.silent) { //trigger change event for all attributes
         for (attr in old) {
           this.trigger('change:' + attr, this, void 0, options);
         }
@@ -279,13 +279,13 @@
     fetch : function(options) {
       options || (options = {});
       var model = this;
-      var success = options.success;
-      options.success = function(resp, status, xhr) {
-        if (!model.set(model.parse(resp, xhr), options)) return false;
+      var success = options.success;  //the callback function for success
+      options.success = function(resp, status, xhr) { //remap options.success to be passed as an arg to this.sync or Backbone.sync; options.success is called if the AJAX request is successful
+        if (!model.set(model.parse(resp, xhr), options)) return false; //parse the response, try to set the attributes.  Only returns false if validation(s) fail.  A change event will be triggered by set() if applicable
         if (success) success(model, resp);
       };
       options.error = wrapError(options.error, model, options);
-      return (this.sync || Backbone.sync).call(this, 'read', this, options);
+      return (this.sync || Backbone.sync).call(this, 'read', this, options); //make actual AJAX request
     },
 
     // Set a hash of model attributes, and sync the model to the server.

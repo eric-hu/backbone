@@ -474,7 +474,7 @@
 
     // Get a model from the set by client id.
     getByCid : function(cid) {
-      return cid && this._byCid[cid.cid || cid]; // allow for fixednum or hash param.  _byId and _byCid are hashes to index Model objects. ?: Not sure why both exist
+      return cid && this._byCid[cid.cid || cid]; // allow for fixednum or hash param.  _byId and _byCid are hashes to index Model objects. Difference between cid and id: id is assigned by the server and can be undefined.  CID is defined client side and can be defined when a model hasn't yet saved to the server.
     },
 
     // Get the model at the given index.
@@ -501,12 +501,12 @@
     // you can reset the entire set with a new list of models, without firing
     // any `added` or `removed` events. Fires `reset` when finished.
     reset : function(models, options) {
-      models  || (models = []);
+      models  || (models = []);  // no models provided => empty the collection
       options || (options = {});
       this.each(this._removeReference);
       this._reset();
-      this.add(models, {silent: true});
-      if (!options.silent) this.trigger('reset', this, options);
+      this.add(models, {silent: true});  // add the models without triggering an 'add' event
+      if (!options.silent) this.trigger('reset', this, options); // trigger 'reset' event unless called with silent:true
       return this;
     },
 
@@ -528,15 +528,15 @@
     // Create a new instance of a model in this collection. After the model
     // has been created on the server, it will be added to the collection.
     // Returns the model, or 'false' if validation on a new model fails.
-    create : function(model, options) {
+    create : function(model, options) { // http://documentcloud.github.com/backbone/#Collection-create is useful here.  model should be an attributes hash or an unsaved model object
       var coll = this;
       options || (options = {});
-      model = this._prepareModel(model, options);
-      if (!model) return false;
+      model = this._prepareModel(model, options);  // assign model to this collection (build a model if given an attributes hash)
+      if (!model) return false;                    // prepareModel will return false if validations fail
       var success = options.success;
-      options.success = function(nextModel, resp, xhr) {
-        coll.add(nextModel, options);
-        if (success) success(nextModel, resp, xhr);
+      options.success = function(nextModel, resp, xhr) { //success callback function
+        coll.add(nextModel, options);              // add model to collection
+        if (success) success(nextModel, resp, xhr);  //call a callback function if defined
       };
       model.save(null, options);
       return model;
@@ -545,13 +545,13 @@
     // **parse** converts a response into a list of models to be added to the
     // collection. The default implementation is just to pass it through.
     parse : function(resp, xhr) {
-      return resp;
+      return resp;            // redefined to change how Backbone and server communicate.  Shouldn't be necessary for Rails
     },
 
     // Proxy to _'s chain. Can't be proxied the same way the rest of the
     // underscore methods are proxied because it relies on the underscore
     // constructor.
-    chain: function () {
+    chain: function () { // Backbone extends all Underscore.js functions to Collection objects.  Chain is a special case that has to be defined here
       return _(this.models).chain();
     },
 
@@ -565,11 +565,11 @@
 
     // Prepare a model to be added to this collection
     _prepareModel: function(model, options) {
-      if (!(model instanceof Backbone.Model)) {
+      if (!(model instanceof Backbone.Model)) { // if model isn't a Model instance, model is assumed to be an attributes hash
         var attrs = model;
-        model = new this.model(attrs, {collection: this});
+        model = new this.model(attrs, {collection: this});  // line 132: set default attributes, assign a Cid
         if (model.validate && !model._performValidation(attrs, options)) model = false;
-      } else if (!model.collection) {
+      } else if (!model.collection) { // model is a Model instance, but will NOT be remapped if it belongs to another collection
         model.collection = this;
       }
       return model;
@@ -580,16 +580,16 @@
     // Returns the model, or 'false' if validation on a new model fails.
     _add : function(model, options) {
       options || (options = {});
-      model = this._prepareModel(model, options);
-      if (!model) return false;
+      model = this._prepareModel(model, options);   // set default attributes, assign a Cid, run validations
+      if (!model) return false;                     // verify validations passed in _prepareModel
       var already = this.getByCid(model);
       if (already) throw new Error(["Can't add the same model to a set twice", already.id]);
-      this._byId[model.id] = model;
+      this._byId[model.id] = model;                 // id can be passed in as an attribute but would otherwise be set by the server on save
       this._byCid[model.cid] = model;
       var index = options.at != null ? options.at :
                   this.comparator ? this.sortedIndex(model, this.comparator) :
                   this.length;
-      this.models.splice(index, 0, model);
+      this.models.splice(index, 0, model);          // insert model to have index 'index'
       model.bind('all', this._onModelEvent);
       this.length++;
       if (!options.silent) model.trigger('add', model, this, options);

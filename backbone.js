@@ -282,7 +282,7 @@
       var success = options.success;  //the callback function for success
       options.success = function(resp, status, xhr) { //remap options.success to be passed as an arg to this.sync or Backbone.sync; options.success is called if the AJAX request is successful
         if (!model.set(model.parse(resp, xhr), options)) return false; //parse the response, try to set the attributes.  Only returns false if validation(s) fail.  A change event will be triggered by set() if applicable
-        if (success) success(model, resp);
+        if (success) success(model, resp); //success callback is called so long as validation didn't fail and success callback defined
       };
       options.error = wrapError(options.error, model, options);
       return (this.sync || Backbone.sync).call(this, 'read', this, options); //make actual AJAX request
@@ -293,27 +293,27 @@
     // state will be `set` again.
     save : function(attrs, options) {
       options || (options = {});
-      if (attrs && !this.set(attrs, options)) return false;
-      var model = this;
-      var success = options.success;
-      options.success = function(resp, status, xhr) {
-        if (!model.set(model.parse(resp, xhr), options)) return false;
+      if (attrs && !this.set(attrs, options)) return false;  //set attributes (and run validations)
+      var model = this;  // store model in a variable, as 'this' will change when AJAX request sent (options.success() )
+      var success = options.success; // store success callback so options.success can be remapped
+      options.success = function(resp, status, xhr) { // define success callback for XMLHttpRequest. Gets passed into jQuery.ajax() method: only called when request was successful (no errors from server or with data)
+        if (!model.set(model.parse(resp, xhr), options)) return false; // try to parse/set successful response, return false if validation fails
         if (success) success(model, resp, xhr);
       };
       options.error = wrapError(options.error, model, options);
       var method = this.isNew() ? 'create' : 'update';
-      return (this.sync || Backbone.sync).call(this, method, this, options);
+      return (this.sync || Backbone.sync).call(this, method, this, options); // AJAX call
     },
 
     // Destroy this model on the server if it was already persisted. Upon success, the model is removed
     // from its collection, if it has one.
     destroy : function(options) {
       options || (options = {});
-      if (this.isNew()) return this.trigger('destroy', this, this.collection, options);
+      if (this.isNew()) return this.trigger('destroy', this, this.collection, options); // object hasn't been saved on server
       var model = this;
       var success = options.success;
       options.success = function(resp) {
-        model.trigger('destroy', model, model.collection, options);
+        model.trigger('destroy', model, model.collection, options); // trigger destroy event *after* server responds with success.  ?: unsure how destroy event triggers local deletion
         if (success) success(model, resp);
       };
       options.error = wrapError(options.error, model, options);
@@ -418,7 +418,7 @@
     options || (options = {});
     if (options.comparator) this.comparator = options.comparator;
     _.bindAll(this, '_onModelEvent', '_removeReference');
-    this._reset();
+    this._reset(); // set collection to be empty and have length zero
     if (models) this.reset(models, {silent: true});
     this.initialize.apply(this, arguments);
   };
@@ -442,10 +442,10 @@
 
     // Add a model, or list of models to the set. Pass **silent** to avoid
     // firing the `added` event for every new model.
-    add : function(models, options) {
+    add : function(models, options) {  // use silent for bulk adds to improve performance
       if (_.isArray(models)) {
         for (var i = 0, l = models.length; i < l; i++) {
-          this._add(models[i], options);
+          this._add(models[i], options);  // _add: internal implementation of collection adding.  See line 581
         }
       } else {
         this._add(models, options);
@@ -458,7 +458,7 @@
     remove : function(models, options) {
       if (_.isArray(models)) {
         for (var i = 0, l = models.length; i < l; i++) {
-          this._remove(models[i], options);
+          this._remove(models[i], options);  // _remove: see line 601
         }
       } else {
         this._remove(models, options);
@@ -469,12 +469,12 @@
     // Get a model from the set by id.
     get : function(id) {
       if (id == null) return null;
-      return this._byId[id.id != null ? id.id : id];
+      return this._byId[id.id != null ? id.id : id];  // allow for id (fixednum) param and {id:id} (hash) param
     },
 
     // Get a model from the set by client id.
     getByCid : function(cid) {
-      return cid && this._byCid[cid.cid || cid];
+      return cid && this._byCid[cid.cid || cid]; // allow for fixednum or hash param.  _byId and _byCid are hashes to index Model objects. ?: Not sure why both exist
     },
 
     // Get the model at the given index.
@@ -899,7 +899,7 @@
   var viewOptions = ['model', 'collection', 'el', 'id', 'attributes', 'className', 'tagName'];
 
   // Set up all inheritable **Backbone.View** properties and methods.
-  _.extend(Backbone.View.prototype, Backbone.Events, {
+  _.extend(Backbone.View.prototype, Backbone.Events, {  // _.extend(destination, *sources)
 
     // The default `tagName` of a View's element is `"div"`.
     tagName : 'div',
